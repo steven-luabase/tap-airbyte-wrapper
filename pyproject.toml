@@ -5,10 +5,10 @@ description = "`tap-airbyte` is a Singer tap for Airbyte, built with the Meltano
 authors = [{ name = "Alex Butler" }]
 keywords = ["ELT", "Airbyte"]
 license = { text = "Apache 2.0" }
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.10,<3.12"
 dependencies = [
     "requests>=2.25.1,<3",
-    "singer-sdk==0.46.0",
+    "singer-sdk==0.49.0",
     "orjson>=3.8.3,<4",
 ]
 
