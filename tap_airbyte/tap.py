@@ -34,7 +34,7 @@ from uuid import UUID
 import click
 import orjson
 import requests
-import singer_sdk._singerlib as singer
+import singer_sdk.singerlib as singer
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th
 from singer_sdk.cli import common_options
