@@ -333,6 +333,31 @@ class TapAirbyte(Tap):
             name += f"~={self.config['airbyte_spec']['tag']}"
         return name
 
+    def _make_mount_readable(self, host_tmpdir: str) -> None:
+        """Make the host tempdir and its contents world-readable.
+
+        TemporaryDirectory() creates the dir at mode 0o700 owned by the
+        current process user. When that dir is bind-mounted into an Airbyte
+        source container that runs as a non-root user (e.g. UID 1000 in
+        official airbyte/source-* images), the container user cannot
+        traverse the dir or read the config file, producing a misleading
+        "Permission denied: '/tmp/config.json'" error inside the connector.
+
+        Skipped for native (PyPI) connectors since no container is involved.
+        """
+        if self.is_native():
+            return
+        try:
+            os.chmod(host_tmpdir, 0o755)
+            for entry in os.listdir(host_tmpdir):
+                os.chmod(os.path.join(host_tmpdir, entry), 0o644)
+        except OSError:
+            self.logger.warning(
+                "Failed to relax permissions on %s; "
+                "the connector container may not be able to read its config",
+                host_tmpdir,
+            )
+
     @lru_cache(maxsize=None)
     def is_native(self) -> bool:
         """Check if the connector is available on PyPI and can be managed natively without Docker."""
@@ -446,6 +471,7 @@ class TapAirbyte(Tap):
         with TemporaryDirectory() as host_tmpdir:
             with open(f"{host_tmpdir}/config.json", "wb") as f:
                 f.write(orjson.dumps(self.config.get("airbyte_config", {})))
+            self._make_mount_readable(host_tmpdir)
             runtime_conf_dir = host_tmpdir if self.is_native() else self.airbyte_mount_dir
             proc = subprocess.run(
                 self.to_command(
@@ -522,6 +548,7 @@ class TapAirbyte(Tap):
                     self.logger.debug("Using state: %s", state_dict)
                     state.write(orjson.dumps(state_dict))
 
+            self._make_mount_readable(host_tmpdir)
             runtime_conf_dir = host_tmpdir if self.is_native() else self.airbyte_mount_dir
             proc = subprocess.Popen(
                 self.to_command(
@@ -631,6 +658,7 @@ class TapAirbyte(Tap):
         with TemporaryDirectory() as host_tmpdir:
             with open(f"{host_tmpdir}/config.json", "wb") as f:
                 f.write(orjson.dumps(self.config.get("airbyte_config", {})))
+            self._make_mount_readable(host_tmpdir)
             runtime_conf_dir = host_tmpdir if self.is_native() else self.airbyte_mount_dir
             proc = subprocess.run(
                 self.to_command(
